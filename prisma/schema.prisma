@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// File DB at prisma/dev.db — no Postgres/Docker required. For production Postgres, change provider + url.
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum Platform {
+  IOS
+  ANDROID
+}
+
+enum EventKind {
+  FIRST_SEEN
+  VERSION_UPDATE
+}
+
+enum AlertKind {
+  DOWNLOAD_MILESTONE
+  DOWNLOAD_SURGE
+}
+
+enum VideoSource {
+  REDDIT
+  YOUTUBE
+}
+
+model WatchedApp {
+  id                      String    @id @default(cuid())
+  platform                Platform
+  externalId              String
+  category                String?
+  isGame                  Boolean   @default(false)
+  trackDownloadMilestones Boolean   @default(true)
+  lastSuccessAt           DateTime?
+  lastError               String?
+  lastVersion             String?
+  lastInstallMin          Int?
+  lastInstallMax          Int?
+  lastInstallLabel        String?
+  alertedMilestones       Json      @default("[]")
+  lastSurgeAlertAt        DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  feedItems               FeedItem[]
+  alerts                  Alert[]
+  discoveries             DeveloperDiscoveredApp[]
+
+  @@unique([platform, externalId])
+}
+
+model WishlistedDeveloper {
+  id                  String                  @id @default(cuid())
+  platform            Platform
+  externalDeveloperId String
+  name                String?
+  storeUrl            String?
+  lastCheckedAt       DateTime?
+  lastError           String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  discoveries         DeveloperDiscoveredApp[]
+
+  @@unique([platform, externalDeveloperId])
+}
+
+model DeveloperDiscoveredApp {
+  id           String              @id @default(cuid())
+  developerId  String
+  developer    WishlistedDeveloper @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  platform     Platform
+  externalId   String
+  title        String?
+  category     String?
+  storeUrl     String?
+  iconUrl      String?
+  screenshots  Json                @default("[]")
+  firstSeenAt  DateTime            @default(now())
+  watchedAppId String?
+  watchedApp   WatchedApp?         @relation(fields: [watchedAppId], references: [id], onDelete: SetNull)
+
+  @@unique([developerId, platform, externalId])
+  @@index([firstSeenAt])
+  @@index([watchedAppId])
+}
+
+model FeedItem {
+  id             String     @id @default(cuid())
+  watchedAppId   String
+  watchedApp     WatchedApp @relation(fields: [watchedAppId], references: [id], onDelete: Cascade)
+  eventKind      EventKind
+  title          String
+  category       String?
+  version        String?
+  releaseNotes   String?
+  iconUrl        String?
+  screenshots    Json       @default("[]")
+  developerName  String?
+  developerUrl   String?
+  storeUrl       String
+  detectedAt     DateTime   @default(now())
+  raw            Json?
+  parseOk        Boolean    @default(true)
+
+  @@index([detectedAt])
+  @@index([watchedAppId])
+}
+
+model Alert {
+  id           String     @id @default(cuid())
+  watchedAppId String
+  watchedApp   WatchedApp @relation(fields: [watchedAppId], references: [id], onDelete: Cascade)
+  kind         AlertKind
+  threshold    Int?
+  title        String
+  body         String
+  read         Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([watchedAppId])
+  @@index([read])
+}
+
+model IngestionRun {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean?
+  message    String?
+  details    Json?
+}
+
+model DailyReportSnapshot {
+  id         String   @id @default(cuid())
+  reportDate DateTime
+  timezone   String
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  @@unique([reportDate, timezone])
+}
+
+model VideoItem {
+  id           String      @id @default(cuid())
+  source       VideoSource
+  sourceId     String
+  subreddit    String
+  title        String
+  postUrl      String
+  embedUrl     String?
+  thumbnailUrl String?
+  author       String?
+  publishedAt  DateTime
+  fetchedAt    DateTime    @default(now())
+  score        Int?
+  nsfw         Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([source, sourceId])
+  @@index([publishedAt])
+  @@index([subreddit])
+}

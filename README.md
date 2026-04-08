@@ -25,8 +25,7 @@ This is **not** exact download velocity; Play only exposes coarse install tiers.
 ## Prerequisites
 
 - Node.js 20+
-- **No database server.** Data is stored in **`prisma/dev.db`** (SQLite). `start.bat` or `npm run db:push` creates/updates it.
-- **Optional:** [`docker-compose.yml`](docker-compose.yml) is only if you want PostgreSQL instead — you would change `provider` + `url` in `prisma/schema.prisma` and set `DATABASE_URL` accordingly.
+- **PostgreSQL** for the app database. Locally, run [`docker-compose.yml`](docker-compose.yml) (`docker compose up -d`) and use the `DATABASE_URL` from [`.env.example`](.env.example). On **Vercel**, use [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres), [Neon](https://neon.tech), [Supabase](https://supabase.com), or any hosted Postgres; set `DATABASE_URL` in the project environment (add `?sslmode=require` if your provider requires SSL).
 
 ## Setup
 
@@ -36,10 +35,11 @@ This is **not** exact download velocity; Play only exposes coarse install tiers.
    cp .env.example .env
    ```
 
-2. Create/update the local database file:
+2. Start Postgres (example: Docker) and apply migrations:
 
    ```bash
-   npm run db:push
+   docker compose up -d
+   npx prisma migrate deploy
    ```
 
 3. Run the app:
@@ -48,7 +48,17 @@ This is **not** exact download velocity; Play only exposes coarse install tiers.
    npm run dev
    ```
 
-Or double-click **`start.bat`** (Windows): copies `.env` from `.env.example` if needed, runs `db push`, then `npm run dev`.
+Or double-click **`start.bat`** (Windows): copies `.env` from `.env.example` if needed, runs `prisma migrate deploy`, then `npm run dev`.
+
+## Deploying on Vercel
+
+1. Push the repo and import the project in the Vercel dashboard (framework: Next.js; build command `npm run build` is the default).
+2. Set **`DATABASE_URL`** to your production Postgres connection string (same variable Prisma uses locally).
+3. Set **`CRON_SECRET`** to a long random string. Vercel Cron sends `x-vercel-cron: 1`, which your cron routes already accept alongside `Authorization: Bearer …`.
+4. Copy any optional env vars you use from `.env.example` (Slack, videos, timezone, etc.).
+5. First deploy runs **`prisma migrate deploy`** then **`next build`**, which creates tables from [`prisma/migrations`](prisma/migrations).
+
+**Cron schedules:** On the [Hobby plan](https://vercel.com/docs/cron-jobs/usage-and-pricing), each job may run **at most once per day** (Vercel rejects hourly expressions at deploy time). [`vercel.json`](vercel.json) uses daily times for that reason. On **Pro**, you can switch Slack Appbird and videos crons back to hourly (`0 * * * *`) if you need fresher data.
 
 Open [http://localhost:3000](http://localhost:3000). Add apps on **Watchlist**, then **Run ingestion now** (or call the cron route below).
 
@@ -120,7 +130,7 @@ Optional env:
 Use `/inspiration` to browse recent video posts from configured subreddits.
 
 - Source is Reddit subreddits only (v1).
-- Refresh modes: hourly cron and manual refresh button on the page.
+- Refresh modes: daily cron (see `vercel.json`) and manual refresh on the page; use Pro + hourly cron if you need more frequent pulls.
 - Video-capable posts are cached in `VideoItem` and rendered with embedded playback when possible.
 
 Env:
@@ -132,7 +142,7 @@ Env:
 Cron endpoint:
 
 - `GET /api/cron/videos` (same auth behavior as other cron routes with `CRON_SECRET`)
-- `vercel.json` includes an hourly schedule for this route
+- `vercel.json` schedules this route once daily (**08:00 UTC** by default; adjust as needed)
 
 ## Feed board + Wishlist + Report v2
 

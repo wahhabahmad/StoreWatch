@@ -4,6 +4,7 @@ import { refreshRedditVideoItems } from "@/lib/videos-reddit";
 import { refreshYouTubeVideoItems } from "@/lib/videos-youtube";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;

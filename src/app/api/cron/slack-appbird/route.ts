@@ -6,6 +6,7 @@ import {
 } from "@/lib/slack-appbird";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Reads Appbird (or similar) Slack channel posts, parses App Store / Play identifiers,

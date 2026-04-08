@@ -1,11 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Vercel runs on Linux; include this target so `prisma generate` on Windows still works at runtime.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
-// File DB at prisma/dev.db — no Postgres/Docker required. For production Postgres, change provider + url.
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Platform {

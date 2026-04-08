@@ -34,7 +34,7 @@ if not exist "node_modules\" (
   )
 )
 
-echo Using SQLite database file: prisma\dev.db ^(no Postgres/Docker needed^)
+echo Using PostgreSQL from DATABASE_URL in .env ^(local: docker compose up -d^)
 echo.
 
 echo Syncing Prisma client and schema...
@@ -49,9 +49,9 @@ if errorlevel 1 (
   )
 )
 
-call npm run db:push -- --skip-generate
+call npx prisma migrate deploy
 if errorlevel 1 (
-  echo prisma db push failed.
+  echo prisma migrate deploy failed. Is Postgres running and DATABASE_URL correct?
   pause
   exit /b 1
 )
